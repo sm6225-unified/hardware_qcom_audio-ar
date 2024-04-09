@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -97,6 +96,7 @@
 #define DEFAULT_OUTPUT_SAMPLING_RATE    48000
 #define LOW_LATENCY_PLAYBACK_PERIOD_SIZE 240 /** 5ms; frames */
 #define LOW_LATENCY_PLAYBACK_PERIOD_COUNT 2
+#define LOW_LATENCY_ICMD_PLAYBACK_PERIOD_COUNT 4 /** In Call Music **/
 
 #define PCM_OFFLOAD_PLAYBACK_PERIOD_COUNT 2 /** Direct PCM */
 #define DEEP_BUFFER_PLAYBACK_PERIOD_COUNT 2 /** Deep Buffer*/
@@ -527,7 +527,6 @@ private:
     pal_device_id_t* mPalOutDeviceIds;
     std::set<audio_devices_t> mAndroidOutDevices;
     bool mInitialized;
-    bool mBypassHaptic;
 
 public:
     StreamOutPrimary(audio_io_handle_t handle,
@@ -574,7 +573,6 @@ public:
     bool isDeviceAvailable(pal_device_id_t deviceId);
     int RouteStream(const std::set<audio_devices_t>&, bool force_device_switch = false);
     ssize_t splitAndWriteAudioHapticsStream(const void *buffer, size_t bytes);
-    ssize_t BypassHapticAndWriteAudioStream(const void *buffer, size_t bytes);
     bool period_size_is_plausible_for_low_latency(int period_size);
 protected:
     struct timespec writeAt;

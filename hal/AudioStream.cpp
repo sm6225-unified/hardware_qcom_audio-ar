@@ -2333,9 +2333,9 @@ int StreamOutPrimary::SetVolume(float left , float right) {
         volume_ = NULL;
     }
 
-    if (left == right) {
-        volume_ = (struct pal_volume_data *)malloc(sizeof(struct pal_volume_data)
-                    +sizeof(struct pal_channel_vol_kv));
+    if (audio_channel_count_from_out_mask(config_.channel_mask) == 1) {
+        volume_ = (struct pal_volume_data *)calloc(1, sizeof(struct pal_volume_data)
+                +sizeof(struct pal_channel_vol_kv));
         if (!volume_) {
             AHAL_ERR("Failed to allocate mem for volume_");
             ret = -ENOMEM;
@@ -2343,9 +2343,15 @@ int StreamOutPrimary::SetVolume(float left , float right) {
         }
         volume_->no_of_volpair = 1;
         volume_->volume_pair[0].channel_mask = 0x03;
-        volume_->volume_pair[0].vol = left;
+
+        if (config_.channel_mask == 0x1)
+            volume_->volume_pair[0].vol = left;
+        else if (config_.channel_mask == 0x2)
+            volume_->volume_pair[0].vol = right;
+        else
+            volume_->volume_pair[0].vol = (left + right)/2.0;
     } else {
-        volume_ = (struct pal_volume_data *)malloc(sizeof(struct pal_volume_data)
+        volume_ = (struct pal_volume_data *)calloc(1, sizeof(struct pal_volume_data)
                     +sizeof(struct pal_channel_vol_kv) * 2);
         if (!volume_) {
             AHAL_ERR("Failed to allocate mem for volume_");
@@ -2605,7 +2611,6 @@ int StreamOutPrimary::Open() {
     bool isHifiFilterEnabled = false;
     bool *payload_hifiFilter = &isHifiFilterEnabled;
     size_t param_size = 0;
-    mBypassHaptic = property_get_bool("vendor.audio.gaming.enabled", false);
 
     AHAL_INFO("Enter: OutPrimary usecase(%d: %s)", GetUseCase(), use_case_table[GetUseCase()]);
 
@@ -2758,11 +2763,11 @@ int StreamOutPrimary::Open() {
         hapticsStreamAttributes.out_media_config.aud_fmt_id = PAL_AUDIO_FMT_PCM_S16_LE;
         hapticsStreamAttributes.out_media_config.ch_info = ch_info;
 
-        if (!hapticsDevice && !mBypassHaptic) {
+        if (!hapticsDevice) {
             hapticsDevice = (struct pal_device*) calloc(1, sizeof(struct pal_device));
         }
 
-        if (hapticsDevice && !mBypassHaptic) {
+        if (hapticsDevice) {
             hapticsDevice->id = PAL_DEVICE_OUT_HAPTICS_DEVICE;
             hapticsDevice->config.sample_rate = DEFAULT_OUTPUT_SAMPLING_RATE;
             hapticsDevice->config.bit_width = CODEC_BACKEND_DEFAULT_BIT_WIDTH;
@@ -2834,8 +2839,15 @@ int StreamOutPrimary::Open() {
     } else
         outBufSize = StreamOutPrimary::GetBufferSize();
 
-    if (usecase_ == USECASE_AUDIO_PLAYBACK_LOW_LATENCY)
-        outBufCount = LOW_LATENCY_PLAYBACK_PERIOD_COUNT;
+    if (usecase_ == USECASE_AUDIO_PLAYBACK_LOW_LATENCY) {
+        if (streamAttributes_.type == PAL_STREAM_VOICE_CALL_MUSIC) {
+            outBufCount = LOW_LATENCY_ICMD_PLAYBACK_PERIOD_COUNT;
+            AHAL_DBG("LOW_LATENCY_ICMD - Buffer Count : %d", outBufCount);
+        }
+        else {
+            outBufCount = LOW_LATENCY_PLAYBACK_PERIOD_COUNT;
+        }
+    }
     else if (usecase_ == USECASE_AUDIO_PLAYBACK_OFFLOAD2)
         outBufCount = PCM_OFFLOAD_PLAYBACK_PERIOD_COUNT;
     else if (usecase_ == USECASE_AUDIO_PLAYBACK_DEEP_BUFFER)
@@ -2922,9 +2934,8 @@ int StreamOutPrimary::GetFrames(uint64_t *frames)
     AHAL_VERBOSE("session msw %u", tstamp.session_time.value_msw);
     AHAL_VERBOSE("session lsw %u", tstamp.session_time.value_lsw);
     AHAL_VERBOSE("session timespec %lld", ((long long) timestamp));
-    timestamp *= (streamAttributes_.out_media_config.sample_rate);
-    AHAL_VERBOSE("timestamp %lld", ((long long) timestamp));
-    dsp_frames = timestamp/1000000;
+    dsp_frames = timestamp / 1000
+                 * streamAttributes_.out_media_config.sample_rate / 1000;
 
     // Adjustment accounts for A2dp encoder latency with offload usecases
     // Note: Encoder latency is returned in ms.
@@ -3032,44 +3043,6 @@ ssize_t StreamOutPrimary::splitAndWriteAudioHapticsStream(const void *buffer, si
      return (ret < 0 ? ret : bytes);
 }
 
-ssize_t StreamOutPrimary::BypassHapticAndWriteAudioStream(const void *buffer, size_t bytes)
-{
-     ssize_t ret = 0;
-     bool allocHapticsBuffer = false;
-     struct pal_buffer audioBuf;
-     size_t srcIndex = 0, audIndex = 0, hapIndex = 0;
-     uint8_t channelCount = audio_channel_count_from_out_mask(config_.channel_mask);
-     uint8_t bytesPerSample = audio_bytes_per_sample(config_.format);
-     uint32_t frameSize = channelCount * bytesPerSample;
-     uint32_t frameCount = bytes / frameSize;
-
-     // Calculate Haptics Buffer size
-     uint8_t hapticsChannelCount = hapticsStreamAttributes.out_media_config.ch_info.channels;
-     uint32_t hapticsFrameSize = bytesPerSample * hapticsChannelCount;
-     uint32_t audioFrameSize = frameSize - hapticsFrameSize;
-     uint32_t totalHapticsBufferSize = frameCount * hapticsFrameSize;
-
-     audioBuf.buffer = (uint8_t *)buffer;
-     audioBuf.size = frameCount * audioFrameSize;
-     audioBuf.offset = 0;
-
-     for (size_t i = 0; i < frameCount; i++) {
-         memcpy((uint8_t *)(audioBuf.buffer) + audIndex, (uint8_t *)(audioBuf.buffer) + srcIndex,
-                audioFrameSize);
-         audIndex += audioFrameSize;
-         srcIndex += audioFrameSize;
-
-         // Skip haptic frames
-         hapIndex += hapticsFrameSize;
-         srcIndex += hapticsFrameSize;
-     }
-
-     // write audio data
-     ret = pal_stream_write(pal_stream_handle_, &audioBuf);
-
-     return (ret < 0 ? ret : bytes);
-}
-
 ssize_t StreamOutPrimary::onWriteError(size_t bytes, ssize_t ret) {
     // standby streams upon write failures and sleep for buffer duration.
     AHAL_ERR("write error %d usecase(%d: %s)", ret, GetUseCase(), use_case_table[GetUseCase()]);
@@ -3137,7 +3110,7 @@ ssize_t StreamOutPrimary::configurePalOutputStream() {
                     config_.sample_rate, flags_);
         }
 
-        if (usecase_ == USECASE_AUDIO_PLAYBACK_WITH_HAPTICS && pal_haptics_stream_handle) {
+        if (usecase_ == USECASE_AUDIO_PLAYBACK_WITH_HAPTICS) {
             ret = pal_stream_start(pal_haptics_stream_handle);
             if (ret) {
                 AHAL_ERR("failed to start haptics stream. ret=%d", ret);
@@ -3261,11 +3234,8 @@ ssize_t StreamOutPrimary::write(const void *buffer, size_t bytes)
         if (ret >= 0) {
             ret = (ret * inputBitWidth) / outputBitWidth;
         }
-    } else if (usecase_ == USECASE_AUDIO_PLAYBACK_WITH_HAPTICS) {
-        if (mBypassHaptic)
-            ret = BypassHapticAndWriteAudioStream(buffer, bytes);
-        else if (pal_haptics_stream_handle)
-            ret = splitAndWriteAudioHapticsStream(buffer, bytes);
+    } else if (usecase_ == USECASE_AUDIO_PLAYBACK_WITH_HAPTICS && pal_haptics_stream_handle) {
+        ret = splitAndWriteAudioHapticsStream(buffer, bytes);
     } else {
         ret = pal_stream_write(pal_stream_handle_, &palBuffer);
     }
@@ -4080,8 +4050,6 @@ int StreamInPrimary::SetParameters(const char* kvpairs) {
         if (CompressCapture::parseMetadata(parms, &config_,
                                            mCompressStreamAdjBitRate)) {
             mIsBitRateSet = true;
-        } else {
-            ret = -EINVAL;
         }
     }
 

@@ -164,6 +164,8 @@ PRODUCT_PACKAGES += QRD_acdb_cal.acdb
 PRODUCT_PACKAGES += QRD_workspaceFileXml.qwsp
 PRODUCT_PACKAGES += IDP_ravelin_acdb_cal.acdb
 PRODUCT_PACKAGES += IDP_ravelin_workspaceFileXml.qwsp
+PRODUCT_PACKAGES += IDP_wsahac_ravelin_acdb_cal.acdb
+PRODUCT_PACKAGES += IDP_wsahac_ravelin_workspaceFileXml.qwsp
 PRODUCT_PACKAGES += QRD_ravelin_acdb_cal.acdb
 PRODUCT_PACKAGES += QRD_ravelin_workspaceFileXml.qwsp
 PRODUCT_PACKAGES += IDP_parrot_sku1_acdb_cal.acdb
@@ -245,8 +247,10 @@ PRODUCT_COPY_FILES += \
     $(CONFIG_HAL_SRC_DIR)/audio_effects.xml:$(CONFIG_SKU_OUT_DIR)/audio_effects.xml \
     $(CONFIG_HAL_SRC_DIR)/mixer_paths_ravelin_qrd.xml:$(CONFIG_SKU_OUT_DIR)/mixer_paths_ravelin_qrd.xml \
     $(CONFIG_HAL_SRC_DIR)/mixer_paths_ravelin_idp.xml:$(CONFIG_SKU_OUT_DIR)/mixer_paths_ravelin_idp.xml \
+    $(CONFIG_HAL_SRC_DIR)/mixer_paths_ravelin_idp_wsahac.xml:$(CONFIG_SKU_OUT_DIR)/mixer_paths_ravelin_idp_wsahac.xml \
     $(CONFIG_PAL_SRC_DIR)/resourcemanager_ravelin_qrd.xml:$(CONFIG_SKU_OUT_DIR)/resourcemanager_ravelin_qrd.xml \
     $(CONFIG_PAL_SRC_DIR)/resourcemanager_ravelin_idp.xml:$(CONFIG_SKU_OUT_DIR)/resourcemanager_ravelin_idp.xml \
+    $(CONFIG_PAL_SRC_DIR)/resourcemanager_ravelin_idp_wsahac.xml:$(CONFIG_SKU_OUT_DIR)/resourcemanager_ravelin_idp_wsahac.xml \
     $(CONFIG_PAL_SRC_DIR)/resourcemanager_upd.xml:$(CONFIG_SKU_OUT_DIR)/resourcemanager_upd.xml \
 
 #XML Audio configuration files
@@ -318,9 +322,6 @@ ro.qc.sdk.audio.ssr=false
 ##fluencetype can be "fluence" or "fluencepro" or "none"
 PRODUCT_PROPERTY_OVERRIDES += \
 ro.qc.sdk.audio.fluencetype=none\
-persist.audio.fluence.voicecall=true\
-persist.audio.fluence.voicerec=false\
-persist.audio.fluence.speaker=true
 
 ##speaker protection v3 switch and ADSP AFE API version
 PRODUCT_PROPERTY_OVERRIDES += \
@@ -454,10 +455,6 @@ vendor.audio.adm.buffering.ms=2
 #enable headset calibration
 PRODUCT_PROPERTY_OVERRIDES += \
 vendor.audio.volume.headset.gain.depcal=true
-
-#enable dualmic fluence for voice communication
-PRODUCT_PROPERTY_OVERRIDES += \
-persist.audio.fluence.voicecomm=true
 
 #enable c2 based encoders/decoders as default NT decoders/encoders
 PRODUCT_PROPERTY_OVERRIDES += \

@@ -77,7 +77,10 @@ LOCAL_SHARED_LIBRARIES := \
     libhidlbase \
     libprocessgroup \
     libutils \
-    libar-pal
+    libar-pal \
+    android.hidl.allocator@1.0 \
+    android.hidl.memory@1.0 \
+    libhidlmemory
 
 ifeq ($(strip $(AUDIO_FEATURE_ENABLED_PAL_HIDL)),true)
   LOCAL_SHARED_LIBRARIES += \
@@ -110,30 +113,3 @@ endif
 endif
 
 include $(BUILD_SHARED_LIBRARY)
-
-
-# Legacy USB AUDIO HAL
-ifneq ($(filter bengal,$(TARGET_BOARD_PLATFORM)),)
-
-include $(CLEAR_VARS)
-LOCAL_MODULE := audio.usb.$(TARGET_BOARD_PLATFORM)
-LOCAL_MODULE_RELATIVE_PATH := hw
-LOCAL_MODULE_OWNER := qti
-LOCAL_VENDOR_MODULE := true
-
-LOCAL_SRC_FILES:= \
-        audio_usb_hal.c
-
-LOCAL_CFLAGS += \
-    -Wno-unused-parameter \
-
-LOCAL_SHARED_LIBRARIES := \
-     liblog \
-     libcutils \
-     libaudioutils \
-     libtinyalsa \
-     libalsautils
-
-LOCAL_HEADER_LIBRARIES += libhardware_headers
-include $(BUILD_SHARED_LIBRARY)
-endif
