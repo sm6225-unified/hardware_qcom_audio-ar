@@ -1,6 +1,5 @@
 /*
  * Copyright (c) 2019-2021, The Linux Foundation. All rights reserved.
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -29,7 +28,7 @@
  *
  * Changes from Qualcomm Innovation Center are provided under the following license:
  *
- * Copyright (c) 2022 Qualcomm Innovation Center, Inc. All rights reserved.
+ * Copyright (c) 2022-2024, Qualcomm Innovation Center, Inc. All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted (subject to the limitations in the
@@ -528,7 +527,23 @@ private:
     pal_device_id_t* mPalOutDeviceIds;
     std::set<audio_devices_t> mAndroidOutDevices;
     bool mInitialized;
-    bool mBypassHaptic;
+    bool isOffloadUsecase() {
+        int usecase = GetUseCase();
+        switch (usecase) {
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD2:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD3:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD4:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD5:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD6:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD7:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD8:
+            case USECASE_AUDIO_PLAYBACK_OFFLOAD9:
+                return true;
+            default:
+                return false;
+        }
+    }
 
 public:
     StreamOutPrimary(audio_io_handle_t handle,
@@ -575,7 +590,6 @@ public:
     bool isDeviceAvailable(pal_device_id_t deviceId);
     int RouteStream(const std::set<audio_devices_t>&, bool force_device_switch = false);
     ssize_t splitAndWriteAudioHapticsStream(const void *buffer, size_t bytes);
-    ssize_t BypassHapticAndWriteAudioStream(const void *buffer, size_t bytes);
     bool period_size_is_plausible_for_low_latency(int period_size);
 protected:
     struct timespec writeAt;
