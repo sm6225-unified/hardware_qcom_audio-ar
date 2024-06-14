@@ -769,6 +769,7 @@ static int astream_out_get_presentation_position(
                break;
            }
             /* fall through if the card is online for PCM OFFLOAD stream */
+           FALLTHROUGH_INTENDED; 
        case PAL_STREAM_COMPRESSED:
            ret = astream_out->GetFrames(frames);
            if (ret) {
@@ -815,6 +816,7 @@ static int out_get_render_position(const struct audio_stream_out *stream,
                 break;
             }
              /* fall through if the card is online for PCM OFFLOAD stream */
+            FALLTHROUGH_INTENDED;
         case PAL_STREAM_COMPRESSED:
             ret = astream_out->GetFrames(&frames);
             if (ret) {
